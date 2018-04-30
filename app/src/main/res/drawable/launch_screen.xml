@@ -9,15 +9,17 @@
     <!-- Your product logo - 144dp color version of your app icon -->
     <item>
 
+        <!--
         <pl.droidsonroids.gif.GifImageView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:src="@drawable/splash"
             />
-<!--
+
         <bitmap
             android:src="@drawable/splash"
-            android:gravity="center"/> -->
+            android:gravity="center"/>
+        -->
 
     </item>
 

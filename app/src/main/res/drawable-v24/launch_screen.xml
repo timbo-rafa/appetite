@@ -14,12 +14,12 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:src="@drawable/splash"
-            /> -->
+            />
 
         <bitmap
             android:src="@drawable/openapp"
             android:gravity="center"/>
-
+        -->
     </item>
 
 </layer-list>
