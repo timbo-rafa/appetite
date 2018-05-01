@@ -11,21 +11,24 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptor;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.windwarriors.appetite.broadcast.BusinessListReadyReceiver;
 import com.windwarriors.appetite.broadcast.FiltersUpdateReceiver;
 import com.windwarriors.appetite.broadcast.RangeUpdateReceiver;
@@ -42,6 +45,8 @@ import static com.windwarriors.appetite.utils.Helper.OpenFilterDialog;
 
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener, GoogleMap.OnInfoWindowClickListener {
 
+    private final String TAG = "Appetite.Maps";
+
     private static final int DIALOG_REQUEST = 9001;
     private GoogleMap mMap;
     private BusinessListReadyReceiver businessListReadyReceiver;
@@ -52,8 +57,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     //private ArrayList<Business> businessList;
     private LocationManager locationManager;
 
-    private double currentLong = Constants.CENTENNIAL_LONGITUDE;
-    private double currentLat = Constants.CENTENNIAL_LATITUDE;
+    private FusedLocationProviderClient mFusedLocationClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,60 +66,39 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         businessServiceClient = new BusinessServiceClient(this);
 
-        handleLocationPermissions();
-
         if (mapServicesAvailable() ) {
             initMap();
         }
-
-        rangeUpdateReceiver = new RangeUpdateReceiver(new RangeUpdateReceiver.OnReceive() {
-
-            @Override
-            public void onReceive() {
-
-                mMap.clear();
-
-                //businessServiceClient.updateRange(range);
-
-                loadRestaurants(mMap);
-            }
-        });
-
-        filtersUpdateReceiver = new FiltersUpdateReceiver(new FiltersUpdateReceiver.OnReceive() {
-            @Override
-            public void onReceive() {
-                mMap.clear();
-
-                businessServiceClient.refreshBusinessList();
-            }
-        });
-
-        registerRangeUpdateBroadcastReceiver();
-        registerFilterUpdateBroadcastReceiver();
-
     }
 
     public void handleLocationPermissions() {
-
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
             ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    Constants.MY_PERMISSIONS_ACCESS_FINE_LOCATION);
-
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                Constants.MY_PERMISSIONS_ACCESS_FINE_LOCATION);
             ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    Constants.MY_PERMISSIONS_ACCESS_COARSE_LOCATION);
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                Constants.MY_PERMISSIONS_ACCESS_COARSE_LOCATION);
 
             handleLocationPermissions();
-
         } else {
-
             locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
 
-            locationManager.requestLocationUpdates("gps", 1000, 1, this);
+            mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
+            mFusedLocationClient.getLastLocation()
+                .addOnSuccessListener( MapsActivity.this, new OnSuccessListener<Location>() {
+                    @Override
+                    public void onSuccess(Location location) {
+                        // Got last known location. In some rare situations this can be null.
+                        if (location != null) {
+                            onLocationChanged(location);
+                        }
+                    }
+            });
         }
     }
 
@@ -133,7 +116,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap = googleMap;
         mMap.setMinZoomPreference(14.0f);
 
-        loadRestaurants(googleMap);
+        broadcastReceivers();
+        handleLocationPermissions();
+        //onLocationChanged(locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER));
     }
 
     @Override
@@ -204,27 +189,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         rangeDialog.show(getSupportFragmentManager(), "Range Dialog");
     }
 
-    private void loadRestaurants(final GoogleMap googleMap) {
-        //businessList = new ArrayList<>();
-        //businessService = new BusinessService(this, businessList);
-        businessListReadyReceiver = new BusinessListReadyReceiver(new BusinessListReadyReceiver.OnReceive() {
-            @Override
-            public void onReceive(ArrayList<Business> businessList) {
-                drawRestaurants(googleMap, businessList);
-            }
-        });
-        registerReceiver(businessListReadyReceiver, businessListReadyReceiver.getIntentFilter());
-
-        businessServiceClient.updateLocation(currentLat, currentLong);
-        businessServiceClient.refreshBusinessList();
-
-        // Add an initial marker in Centennial College and move camera to that point
-        LatLng currentLatLong = new LatLng(currentLat, currentLong);
-        BitmapDescriptor bluePin = CustomizedPinService.herePin();
-        mMap.addMarker(new MarkerOptions().position(currentLatLong).icon(bluePin)); //.title("Centennial College"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(currentLatLong));
-    }
-
     private void drawRestaurants(GoogleMap googleMap, ArrayList<Business> businessList) {
         for (Business business: businessList) {
             drawRestaurant(googleMap, business);
@@ -236,45 +200,51 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         LatLng latLng = new LatLng(business.getLatitude(), business.getLongitude());
         BitmapDescriptor icon = customizedPinService.getCustomMapPin(); //BitmapDescriptorFactory.fromResource(R.drawable.pin_fork_spoon_cross);
         MarkerOptions markerOptions = new MarkerOptions()
-                .position( latLng )
-                .title(business.getName())
-                .snippet(business.getName())
-                .icon(icon)
-                .anchor(0.5f, 0.5f);
+            .position( latLng )
+            .title(business.getName())
+            .snippet(business.getName())
+            .icon(icon)
+            .anchor(0.5f, 0.5f);
 
         googleMap
-                .addMarker(markerOptions)
-                .setTag(business.getId() + ";" + business.getFormattedDistance());
+            .addMarker(markerOptions)
+            .setTag(business.getId() + ";" + business.getFormattedDistance());
 
         googleMap.setOnInfoWindowClickListener(this);
     }
 
     @Override
     public void onLocationChanged(Location location) {
-
-//        Toast.makeText(this,  location.getLatitude()+",\n"+location.getLongitude(),
-//                Toast.LENGTH_SHORT).show();
-
+        if (location == null) {
+            Log.v(TAG, "onLocationChanged null");
+            return;
+        }
+        //Log.v(TAG, "onLocationChanged " + location.getLatitude() + " " + location.getLongitude());
+        //Toast.makeText(this,
+        //location.getLatitude()+",\n"+location.getLongitude(), Toast.LENGTH_SHORT).show();
+        double currentLat = location.getLatitude();
+        double currentLong = location.getLongitude();
         if(mMap != null){
-
             //Toast.makeText(this,  location.getLatitude()+",\n"+location.getLongitude(),
-            // Toast.LENGTH_SHORT).show();
+            //Toast.LENGTH_SHORT).show();
 
-            currentLat = location.getLatitude();
-            currentLong = location.getLongitude();
-
-            loadRestaurants(mMap);
+            // Add an initial marker and move camera to that point
+            LatLng currentLatLong = new LatLng(currentLat, currentLong);
+            BitmapDescriptor bluePin = CustomizedPinService.herePin();
+            mMap.addMarker(new MarkerOptions().position(currentLatLong).icon(bluePin)); //.title("Centennial College"));
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(currentLatLong));
+            //mMap.resetMinMaxZoomPreference();
         }
     }
 
     @Override
     public void onStatusChanged(String s, int i, Bundle bundle) {
-
+        Log.v(TAG,"onStatusChanged " + s + i);
     }
 
     @Override
     public void onProviderEnabled(String s) {
-
+        handleLocationPermissions();
     }
 
     @Override
@@ -293,6 +263,34 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         startActivity(detailsIntent);
     }
 
+    private void broadcastReceivers() {
+        businessListReadyReceiver = new BusinessListReadyReceiver(new BusinessListReadyReceiver.OnReceive() {
+            @Override
+            public void onReceive(ArrayList<Business> businessList) {
+                drawRestaurants(mMap, businessList);
+            }
+        });
+        registerReceiver(businessListReadyReceiver, businessListReadyReceiver.getIntentFilter());
+        rangeUpdateReceiver = new RangeUpdateReceiver(new RangeUpdateReceiver.OnReceive() {
+
+            @Override
+            public void onReceive() {
+                mMap.clear();
+                businessServiceClient.refreshBusinessList();
+            }
+        });
+        registerRangeUpdateBroadcastReceiver();
+        filtersUpdateReceiver = new FiltersUpdateReceiver(new FiltersUpdateReceiver.OnReceive() {
+            @Override
+            public void onReceive() {
+                mMap.clear();
+                businessServiceClient.refreshBusinessList();
+            }
+        });
+        registerFilterUpdateBroadcastReceiver();
+        businessServiceClient.refreshBusinessList();
+    }
+
     private void registerRangeUpdateBroadcastReceiver() {
         registerReceiver(rangeUpdateReceiver, rangeUpdateReceiver.getIntentFilter());
     }
@@ -300,22 +298,4 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void registerFilterUpdateBroadcastReceiver() {
         registerReceiver(filtersUpdateReceiver, filtersUpdateReceiver.getIntentFilter());
     }
-
-    /*
-    private void mockRestaurantCoordinates(GoogleMap map) {
-        List<Double> latitudes = Arrays.asList(43.6782714, 43.6782714, 43.6782714, 43.6726372, 43.6726372, 43.6704898);
-        List<Double> longitudes = Arrays.asList(-79.3923463, -79.3923463, -79.3923463, -79.3880788, -79.3880788, -79.3952154 );
-        List<String> names = Arrays.asList("Palace Restaurant", "Globe Bistro", "Peartree Restaurant", "Matisse Restaurant", "Blu Ristorante", "Trattoria Nervosa");
-
-        int size = names.size();
-        for (int i = 0; i < size; ++i) {
-            LatLng coordinate = new LatLng(latitudes.get(i), longitudes.get(i));
-            map.addMarker(new MarkerOptions()
-                    .position(coordinate)
-                    .title(names.get(i))
-                    .snippet(names.get(i))
-                    .anchor(0.5f, 0.5f));
-        }
-    }
-    */
 }
