@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.windwarriors.appetite">
+    package="com.rafaeltimbo.appetite">
 
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -19,7 +19,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".BusinessListActivity"
+        <activity android:name="com.rafaeltimbo.appetite.BusinessListActivity"
             android:theme="@style/SplashTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -27,11 +27,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".MainActivity" />
-        <activity android:name=".LoginActivity" />
-        <activity android:name=".RegisterActivity" />
+        <activity android:name="com.rafaeltimbo.appetite.MainActivity" />
+        <activity android:name="com.rafaeltimbo.appetite.LoginActivity" />
+        <activity android:name="com.rafaeltimbo.appetite.RegisterActivity" />
         <activity
-            android:name=".MapsActivity"
+            android:name="com.rafaeltimbo.appetite.MapsActivity"
             android:label="@string/title_activity_maps" />
         <!--
              The API key for Google Maps-based APIs is defined as a string resource.
@@ -45,10 +45,10 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_maps_key" />
 
-        <activity android:name=".BusinessDetailsActivity" android:theme="@style/AppTheme.NoActionBar"/>
+        <activity android:name="com.rafaeltimbo.appetite.BusinessDetailsActivity" android:theme="@style/AppTheme.NoActionBar"/>
         <!--<activity android:name=".BusinessListFilterDialog" />-->
 
-        <service android:name=".service.BusinessService" />
+        <service android:name="com.rafaeltimbo.appetite.service.BusinessService" />
     </application>
 
 </manifest>

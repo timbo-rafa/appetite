@@ -6,7 +6,7 @@
     android:layout_height="wrap_content"
     android:padding="5dp"
     android:orientation="horizontal"
-    tools:context="com.windwarriors.appetite.BusinessListActivity">
+    tools:context="com.rafaeltimbo.appetite.BusinessListActivity">
 
 
     <ProgressBar
@@ -38,7 +38,7 @@
             android:padding="0dp"
             android:layout_marginLeft="5dp"
             android:orientation="vertical"
-            tools:context="com.windwarriors.appetite.BusinessListActivity">
+            tools:context="com.rafaeltimbo.appetite.BusinessListActivity">
 
             <TextView
                 android:id="@+id/business_name"
