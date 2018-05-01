@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import static com.windwarriors.appetite.utils.Constants.SHARED_PREFERENCES_SEARCH_RANGE;
 import static com.windwarriors.appetite.utils.Helper.OpenFilterDialog;
 import static com.windwarriors.appetite.utils.Helper.OpenRangeDialog;
-import static java.lang.Thread.sleep;
 
 
 public class BusinessListActivity extends AppCompatActivity {
